@@ -116,7 +116,7 @@ export const Produtos = () => {
       <TopBar />
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 md:px-6 py-6 pb-32">
         <div className="text-center mb-12 animate-slide-up">
-              <img src="\src\assets\BANNER-001.png"></img>
+              <img src="\assets\BANNER-001.png"></img>
         </div>
 
         {loading ? (
