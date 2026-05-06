@@ -7,6 +7,7 @@ import { TopBar } from "@/components/TopBar";
 import { Mascot } from "@/components/Mascot";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import banner from "../assets/BANNER-001.png";
 import { Minus, Plus, Trash2, ShoppingCart, ArrowRight } from "lucide-react";
 
 const ProductRow = ({ product, alt }: { product: Product; alt: boolean }) => {
@@ -116,7 +117,7 @@ export const Produtos = () => {
       <TopBar />
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 md:px-6 py-6 pb-32">
         <div className="text-center mb-12 animate-slide-up">
-              <img src="\assets\BANNER-001.png"></img>
+              <img src={banner} alt="Banner" />
         </div>
 
         {loading ? (
