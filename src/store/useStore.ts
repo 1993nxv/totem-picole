@@ -1,96 +1,100 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { CartItem } from '../services/central'
+import { create } from "zustand";
+import type { CartItem, Product, MascotMood } from "@/types";
 
-export type MascotMood = 'neutral' | 'happy' | 'excited' | 'sad'
-export type Theme = 'light' | 'dark'
+interface State {
+  cart: CartItem[];
+  theme: "light" | "dark";
+  mascotMood: MascotMood;
+  mascotMessage: string;
+  isIdle: boolean;
+  adminAuthed: boolean;
 
-interface AppState {
-  // Theme
-  theme: Theme
-  toggleTheme: () => void
+  addToCart: (p: Product) => void;
+  removeOne: (id: string) => void;
+  removeAll: (id: string) => void;
+  clearCart: () => void;
+  cartCount: () => number;
+  cartTotal: () => number;
 
-  // Cart
-  cart: CartItem[]
-  addToCart: (item: CartItem) => void
-  removeFromCart: (productId: string) => void
-  updateCartQuantity: (productId: string, quantity: number) => void
-  clearCart: () => void
-  getCartTotal: () => number
+  toggleTheme: () => void;
+  setTheme: (t: "light" | "dark") => void;
 
-  // Mascot
-  mascotMood: MascotMood
-  setMascotMood: (mood: MascotMood) => void
+  setMascot: (mood: MascotMood, message?: string) => void;
 
-  // Idle Mode
-  isIdle: boolean
-  setIdle: (isIdle: boolean) => void
-
-  // Session
-  sessionActive: boolean
-  startSession: () => void
-  endSession: () => void
+  setIdle: (b: boolean) => void;
+  setAdminAuthed: (b: boolean) => void;
 }
 
-export const useStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      // Theme
-      theme: 'light',
-      toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+export const useStore = create<State>((set, get) => ({
+  cart: [],
+  theme: (localStorage.getItem("theme") as "light" | "dark") || "light",
+  mascotMood: "neutral",
+  mascotMessage: "Olá! Bem-vindo à Frutos de Goiás 🦜",
+  isIdle: false,
+  adminAuthed: false,
 
-      // Cart
-      cart: [],
-      addToCart: (item) => {
-        const existing = get().cart.find((i) => i.id === item.id)
-        if (existing) {
-          set((state) => ({
-            cart: state.cart.map((i) =>
-              i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-            ),
-            mascotMood: 'excited'
-          }))
-        } else {
-          set((state) => ({
-            cart: [...state.cart, { ...item, quantity: 1 }],
-            mascotMood: 'happy'
-          }))
-        }
-      },
-      removeFromCart: (productId) =>
-        set((state) => ({
-          cart: state.cart.filter((i) => i.id !== productId)
-        })),
-      updateCartQuantity: (productId, quantity) =>
-        set((state) => ({
-          cart: state.cart.map((i) =>
-            i.id === productId ? { ...i, quantity: Math.max(0, quantity) } : i
-          ).filter(i => i.quantity > 0)
-        })),
-      clearCart: () => set({ cart: [] }),
-      getCartTotal: () => {
-        return get().cart.reduce((total, item) => {
-          const price = item.promotionalPrice || item.price
-          return total + price * item.quantity
-        }, 0)
-      },
-
-      // Mascot
-      mascotMood: 'neutral',
-      setMascotMood: (mood) => set({ mascotMood: mood }),
-
-      // Idle Mode
-      isIdle: true,
-      setIdle: (isIdle) => set({ isIdle, mascotMood: isIdle ? 'neutral' : 'happy' }),
-
-      // Session
-      sessionActive: false,
-      startSession: () => set({ sessionActive: true, isIdle: false, mascotMood: 'happy' }),
-      endSession: () => set({ sessionActive: false, isIdle: true, cart: [], mascotMood: 'neutral' }),
+  addToCart: (p) =>
+    set((s) => {
+      const existing = s.cart.find((c) => c.product.id === p.id);
+      if (existing) {
+        if (existing.quantity >= p.stock) return s;
+        return {
+          cart: s.cart.map((c) =>
+            c.product.id === p.id ? { ...c, quantity: c.quantity + 1 } : c
+          ),
+          mascotMood: "happy",
+          mascotMessage: `+1 ${p.name}! 😋`,
+        };
+      }
+      return {
+        cart: [...s.cart, { product: p, quantity: 1 }],
+        mascotMood: "happy",
+        mascotMessage: `${p.name} adicionado!`,
+      };
     }),
-    {
-      name: 'picole-kiosk-storage',
-      partialize: (state) => ({ theme: state.theme, cart: state.cart }),
-    }
-  )
-)
+  removeOne: (id) =>
+    set((s) => {
+      const item = s.cart.find((c) => c.product.id === id);
+      if (!item) return s;
+      const cart =
+        item.quantity > 1
+          ? s.cart.map((c) => (c.product.id === id ? { ...c, quantity: c.quantity - 1 } : c))
+          : s.cart.filter((c) => c.product.id !== id);
+      return { cart, mascotMood: "neutral", mascotMessage: "Removido." };
+    }),
+  removeAll: (id) =>
+    set((s) => ({
+      cart: s.cart.filter((c) => c.product.id !== id),
+      mascotMood: "neutral",
+      mascotMessage: "Item removido.",
+    })),
+  clearCart: () => set({ cart: [] }),
+  cartCount: () => get().cart.reduce((a, c) => a + c.quantity, 0),
+  cartTotal: () =>
+    get().cart.reduce((a, c) => a + (c.product.promoPrice ?? c.product.price) * c.quantity, 0),
+
+  toggleTheme: () =>
+    set((s) => {
+      const t = s.theme === "light" ? "dark" : "light";
+      localStorage.setItem("theme", t);
+      document.documentElement.classList.toggle("dark", t === "dark");
+      return { theme: t };
+    }),
+  setTheme: (t) => {
+    localStorage.setItem("theme", t);
+    document.documentElement.classList.toggle("dark", t === "dark");
+    set({ theme: t });
+  },
+
+  setMascot: (mood, message) =>
+    set({ mascotMood: mood, mascotMessage: message ?? get().mascotMessage }),
+
+  setIdle: (b) => set({ isIdle: b }),
+  setAdminAuthed: (b) => set({ adminAuthed: b }),
+}));
+
+// Init theme on load
+if (typeof document !== "undefined") {
+  const t = (localStorage.getItem("theme") as "light" | "dark") || "light";
+  document.documentElement.classList.toggle("dark", t === "dark");
+}

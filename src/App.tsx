@@ -1,74 +1,48 @@
-import { createRouter, createRoute, createRootRoute, RouterProvider, Outlet } from '@tanstack/react-router'
-import { useEffect } from 'react'
-import { ProductsService } from './services/central'
-import { useStore } from './store/useStore'
-import { Mascot } from './components/Mascot'
-import { IdleTimer } from './components/IdleTimer'
-import { Home } from './pages/Home'
-import { Payment } from './pages/Payment'
-import { Success } from './pages/Success'
-import { AdminDashboard } from './pages/Admin'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useStore } from "@/store/useStore";
+import { IdleWatcher } from "@/components/IdleWatcher";
+import { IdleScreen } from "@/components/IdleScreen";
+import Produtos from "./pages/Produtos";
+import Pagamento from "./pages/Pagamento";
+import Preparando from "./pages/Preparando";
+import Gerir from "./pages/Gerir";
+import NotFound from "./pages/NotFound";
 
-// Root Route
-const rootRoute = createRootRoute({
-  component: () => (
-    <div className="relative min-h-screen w-full overflow-hidden bg-background text-foreground transition-colors duration-300">
-      <IdleTimer />
-      <Outlet />
-      <Mascot />
-    </div>
-  ),
-})
+const queryClient = new QueryClient();
 
-// Child Routes
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  component: Home,
-})
+const Shell = () => {
+  const isIdle = useStore((s) => s.isIdle);
+  const location = useLocation();
+  const showIdle = isIdle && !location.pathname.startsWith("/gerir");
 
-const paymentRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/pagamento',
-  component: Payment,
-})
+  return (
+    <IdleWatcher>
+      {showIdle && <IdleScreen />}
+      <Routes>
+        <Route path="/" element={<Produtos />} />
+        <Route path="/pagamento" element={<Pagamento />} />
+        <Route path="/preparando" element={<Preparando />} />
+        <Route path="/gerir" element={<Gerir />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </IdleWatcher>
+  );
+};
 
-const successRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/sucesso',
-  component: Success,
-})
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Shell />
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
-const adminRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/gerir',
-  component: AdminDashboard,
-})
-
-const routeTree = rootRoute.addChildren([indexRoute, paymentRoute, successRoute, adminRoute])
-
-const router = createRouter({ routeTree })
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router
-  }
-}
-
-export default function App() {
-  const theme = useStore((state) => state.theme)
-
-  useEffect(() => {
-    ProductsService.initializeMockData().catch(console.error)
-  }, [])
-
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [theme])
-
-  return <RouterProvider router={router} />
-}
+export default App;
